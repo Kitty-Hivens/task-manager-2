@@ -1,5 +1,6 @@
 package org.example.taskmanager11;
 
+import org.example.taskmanager11.repo.ClientRepository;
 import org.example.taskmanager11.services.ClientService;
 import org.example.taskmanager11.services.TaskService;
 import org.example.taskmanager11.utils.Utils;
@@ -18,16 +19,22 @@ public class TaskManagerApplication {
     }
 
     @Bean
-    public CommandLineRunner runner(TaskService taskService, ClientService clientService) {
+    public CommandLineRunner runner(TaskService taskService, ClientService clientService, ClientRepository clientRepository) {
         return args -> {
             System.out.println("Hello World");
 
-            for (int i = 0; i < 10; i++) {
-                taskService.addTask("Test task #" + i);
-            }
+            if (clientRepository.findByLogin("111") == null) {
+                System.out.println("Adding sample data...");
 
-            String salt = Utils.generateRandomString(10);
-            clientService.addClient("111", salt, Utils.passwordHash(salt, "222"));
+                for (int i = 0; i < 10; i++) {
+                    taskService.addTask("Test task #" + i);
+                }
+
+                String salt = Utils.generateRandomString(10);
+                clientService.addClient("111", salt, Utils.passwordHash(salt, "222"));
+            } else {
+                System.out.println("Sample data already exists.");
+            }
         };
     }
 }

@@ -5,10 +5,8 @@ import org.example.taskmanager11.model.Client;
 import org.example.taskmanager11.services.ClientService;
 import org.example.taskmanager11.utils.Utils;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 public class ClientController {
@@ -17,6 +15,11 @@ public class ClientController {
 
     public ClientController(ClientService clientService) {
         this.clientService = clientService;
+    }
+
+    private void checkAuthorized(HttpSession session) {
+        if (session.getAttribute("login") == null)
+            throw new NotAuthorizedException();
     }
 
     @GetMapping("register")
@@ -54,5 +57,49 @@ public class ClientController {
     public String logout(HttpSession session) {
         session.removeAttribute("login");
         return "redirect:/";
+    }
+
+    @GetMapping("/change-password")
+    public String changePasswordPage(HttpSession session) {
+        checkAuthorized(session);
+        return "change-password";
+    }
+
+    @PostMapping("/change-password")
+    public String changePassword(@RequestParam String oldPassword,
+                                 @RequestParam String newPassword,
+                                 @RequestParam String confirmPassword,
+                                 HttpSession session,
+                                 RedirectAttributes redirectAttributes) {
+
+        checkAuthorized(session);
+        String login = (String) session.getAttribute("login");
+
+        if (login == null) {
+            return "redirect:/login";
+        }
+
+
+        if (!newPassword.equals(confirmPassword)) {
+            redirectAttributes.addFlashAttribute("error", "New passwords do not match.");
+            return "redirect:/change-password";
+        }
+
+
+        boolean success = clientService.changePassword(login, oldPassword, newPassword);
+
+        if (success) {
+            session.removeAttribute("login");
+            return "redirect:/login?changed";
+        } else {
+            // Ошибка (неверный старый пароль)
+            redirectAttributes.addFlashAttribute("error", "Incorrect old password.");
+            return "redirect:/change-password";
+        }
+    }
+
+    @ExceptionHandler(value = NotAuthorizedException.class)
+    public String onException() {
+        return "redirect:/login";
     }
 }
